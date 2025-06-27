@@ -10,20 +10,15 @@ class GameSettings {
   int skillCap;
   int skillCapBonus;
 
+  // --- HP Calculation ---
+  double baseHp;
+  double expToHpFactor; // e.g., a value of 50 means 1 HP per 50 experience points.
+
   // Combat Settings
   int maxTurns;
   double underdogBonus;
-  double hpPerStrengthPoint;
   double baseDamage;
   double typeAdvantageMultiplier;
-
-  // --- NEW: Fine-Tuning Parameters for Combat Formulas ---
-
-  // Attack Score Multipliers
-  double scoreTacticsMultiplier;
-  double scoreAnatomyMultiplier;
-  double scoreDexterityMultiplier;
-  double scoreEvalIntMultiplier;
 
   // Damage Formula Multipliers
   double damageBonusNormalizer;
@@ -31,9 +26,8 @@ class GameSettings {
   double damageReductionCap;
 
   // Defense Score Multipliers
-  double defenseParryingVsMeleeMultiplier;
-  double defenseSpiritSpeakMultiplier;
-  double defenseDexterityMultiplier;
+  double defenseParryingVsRangedMultiplier; // Buff to parry against ranged attacks
+  double defenseDexEvadeVsMagicMultiplier; // Nerf to dexterity-based evasion against magic
 
   // Healing Formula
   double healChanceDivisor;
@@ -51,18 +45,15 @@ class GameSettings {
     this.skillCap = 100,
     this.skillCapBonus = 120,
 
+    // HP
+    this.baseHp = 100.0,
+    this.expToHpFactor = 40.0,
+
     // Combat
     this.maxTurns = 100,
     this.underdogBonus = 10.0,
-    this.hpPerStrengthPoint = 2.5,
     this.baseDamage = 5.0,
     this.typeAdvantageMultiplier = 1.3,
-
-    // Attack Score
-    this.scoreTacticsMultiplier = 0.5,
-    this.scoreAnatomyMultiplier = 0.3,
-    this.scoreDexterityMultiplier = 0.3,
-    this.scoreEvalIntMultiplier = 0.4,
 
     // Damage Formula
     this.damageBonusNormalizer = 150.0,
@@ -70,9 +61,8 @@ class GameSettings {
     this.damageReductionCap = 0.9,
 
     // Defense Score
-    this.defenseParryingVsMeleeMultiplier = 0.8,
-    this.defenseSpiritSpeakMultiplier = 0.2,
-    this.defenseDexterityMultiplier = 0.4,
+    this.defenseParryingVsRangedMultiplier = 1.25,
+    this.defenseDexEvadeVsMagicMultiplier = 0.5,
 
     // Healing
     this.healChanceDivisor = 500.0,
@@ -87,21 +77,17 @@ class GameSettings {
     int? playerSkillCapTotal,
     int? skillCap,
     int? skillCapBonus,
+    double? baseHp,
+    double? expToHpFactor,
     int? maxTurns,
     double? underdogBonus,
-    double? hpPerStrengthPoint,
     double? baseDamage,
     double? typeAdvantageMultiplier,
-    double? scoreTacticsMultiplier,
-    double? scoreAnatomyMultiplier,
-    double? scoreDexterityMultiplier,
-    double? scoreEvalIntMultiplier,
     double? damageBonusNormalizer,
     double? damageReductionNormalizer,
     double? damageReductionCap,
-    double? defenseParryingVsMeleeMultiplier,
-    double? defenseSpiritSpeakMultiplier,
-    double? defenseDexterityMultiplier,
+    double? defenseParryingVsRangedMultiplier,
+    double? defenseDexEvadeVsMagicMultiplier,
     double? healChanceDivisor,
     double? healBaseMultiplier,
     double? healRandomBonus,
@@ -112,21 +98,17 @@ class GameSettings {
       playerSkillCapTotal: playerSkillCapTotal ?? this.playerSkillCapTotal,
       skillCap: skillCap ?? this.skillCap,
       skillCapBonus: skillCapBonus ?? this.skillCapBonus,
+      baseHp: baseHp ?? this.baseHp,
+      expToHpFactor: expToHpFactor ?? this.expToHpFactor,
       maxTurns: maxTurns ?? this.maxTurns,
       underdogBonus: underdogBonus ?? this.underdogBonus,
-      hpPerStrengthPoint: hpPerStrengthPoint ?? this.hpPerStrengthPoint,
       baseDamage: baseDamage ?? this.baseDamage,
       typeAdvantageMultiplier: typeAdvantageMultiplier ?? this.typeAdvantageMultiplier,
-      scoreTacticsMultiplier: scoreTacticsMultiplier ?? this.scoreTacticsMultiplier,
-      scoreAnatomyMultiplier: scoreAnatomyMultiplier ?? this.scoreAnatomyMultiplier,
-      scoreDexterityMultiplier: scoreDexterityMultiplier ?? this.scoreDexterityMultiplier,
-      scoreEvalIntMultiplier: scoreEvalIntMultiplier ?? this.scoreEvalIntMultiplier,
       damageBonusNormalizer: damageBonusNormalizer ?? this.damageBonusNormalizer,
       damageReductionNormalizer: damageReductionNormalizer ?? this.damageReductionNormalizer,
       damageReductionCap: damageReductionCap ?? this.damageReductionCap,
-      defenseParryingVsMeleeMultiplier: defenseParryingVsMeleeMultiplier ?? this.defenseParryingVsMeleeMultiplier,
-      defenseSpiritSpeakMultiplier: defenseSpiritSpeakMultiplier ?? this.defenseSpiritSpeakMultiplier,
-      defenseDexterityMultiplier: defenseDexterityMultiplier ?? this.defenseDexterityMultiplier,
+      defenseParryingVsRangedMultiplier: defenseParryingVsRangedMultiplier ?? this.defenseParryingVsRangedMultiplier,
+      defenseDexEvadeVsMagicMultiplier: defenseDexEvadeVsMagicMultiplier ?? this.defenseDexEvadeVsMagicMultiplier,
       healChanceDivisor: healChanceDivisor ?? this.healChanceDivisor,
       healBaseMultiplier: healBaseMultiplier ?? this.healBaseMultiplier,
       healRandomBonus: healRandomBonus ?? this.healRandomBonus,

@@ -75,7 +75,32 @@ class _CombatTestPageState extends State<CombatTestPage> {
   }
 
   void _generateReport() {
-    // Omesso per brevità (invariato)
+    // This now includes all settings
+    final buffer = StringBuffer();
+    buffer.writeln('--- Combat Simulation Report ---');
+    buffer.writeln('Date: ${DateTime.now()}');
+    buffer.writeln('\n--- Game Settings Used ---');
+    buffer.writeln('typeAdvantageMultiplier: ${_settings.typeAdvantageMultiplier.toStringAsFixed(2)}');
+    buffer.writeln('baseHp: ${_settings.baseHp}');
+    buffer.writeln('expToHpFactor: ${_settings.expToHpFactor}');
+    buffer.writeln('baseDamage: ${_settings.baseDamage}');
+    buffer.writeln('underdogBonus: ${_settings.underdogBonus}');
+    buffer.writeln('maxTurns: ${_settings.maxTurns}');
+    buffer.writeln('damageBonusNormalizer: ${_settings.damageBonusNormalizer}');
+    buffer.writeln('damageReductionNormalizer: ${_settings.damageReductionNormalizer}');
+    buffer.writeln('damageReductionCap: ${_settings.damageReductionCap.toStringAsFixed(2)}');
+    buffer.writeln('parryVsRangedMultiplier: ${_settings.defenseParryingVsRangedMultiplier.toStringAsFixed(2)}');
+    buffer.writeln('dexEvadeVsMagicMultiplier: ${_settings.defenseDexEvadeVsMagicMultiplier.toStringAsFixed(2)}');
+
+    buffer.writeln('\n--- Summary Results ---');
+    final wins1 = _results[CombatResultType.combatant1Wins] ?? 0;
+    final wins2 = _results[CombatResultType.combatant2Wins] ?? 0;
+    final draws = _results[CombatResultType.draw] ?? 0;
+    buffer.writeln('Group 1 [${_c1Style.name}] Wins: $wins1 (${(wins1 / _numFights * 100).toStringAsFixed(1)}%)');
+    buffer.writeln('Group 2 [${_c2Style.name}] Wins: $wins2 (${(wins2 / _numFights * 100).toStringAsFixed(1)}%)');
+    buffer.writeln('Draws: $draws (${(draws / _numFights * 100).toStringAsFixed(1)}%)');
+
+    _reportSummary = buffer.toString();
   }
 
   void _saveReport() async {
@@ -89,7 +114,7 @@ class _CombatTestPageState extends State<CombatTestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Combat System Tester v8')),
+      appBar: AppBar(title: const Text('Combat System Tester v9')),
       body: Scrollbar(
         controller: _scrollController,
         child: ListView(
@@ -108,7 +133,6 @@ class _CombatTestPageState extends State<CombatTestPage> {
   }
 
   Widget _buildTestTypeSelector() {
-    // Omesso per brevità (invariato)
     return Card(child: Padding(padding: const EdgeInsets.all(8.0),
         child: Column(children: [
           Text("Tipo di Test", style: Theme.of(context).textTheme.titleMedium),
@@ -136,12 +160,14 @@ class _CombatTestPageState extends State<CombatTestPage> {
               _buildSlider('Type Adv. Multiplier', _settings.typeAdvantageMultiplier, 1, 2, (v) => _settings.typeAdvantageMultiplier = v, isPercentage: false),
               _buildSlider('Base Damage', _settings.baseDamage, 1, 20, (v) => _settings.baseDamage = v),
               _buildSlider('Underdog Bonus', _settings.underdogBonus, 0, 100, (v) => _settings.underdogBonus = v),
-              _buildSlider('HP per Strength', _settings.hpPerStrengthPoint, 1, 10, (v) => _settings.hpPerStrengthPoint = v),
+              _buildSlider('Base HP', _settings.baseHp, 50, 200, (v) => _settings.baseHp = v),
+              _buildSlider('Exp to HP Factor', _settings.expToHpFactor, 10, 100, (v) => _settings.expToHpFactor = v),
               _buildSlider('Max Turns', _settings.maxTurns.toDouble(), 10, 500, (v) => _settings.maxTurns = v.toInt()),
               _buildSlider('Dmg Bonus Normalizer', _settings.damageBonusNormalizer, 50, 500, (v) => _settings.damageBonusNormalizer = v),
               _buildSlider('Dmg Red. Normalizer', _settings.damageReductionNormalizer, 100, 1000, (v) => _settings.damageReductionNormalizer = v),
               _buildSlider('Dmg Red. Cap', _settings.damageReductionCap, 0, 1, (v) => _settings.damageReductionCap = v, isPercentage: true),
-              _buildSlider('Parry vs Melee Eff.', _settings.defenseParryingVsMeleeMultiplier, 0, 1, (v) => _settings.defenseParryingVsMeleeMultiplier = v, isPercentage: true),
+              _buildSlider('Parry vs Ranged Eff.', _settings.defenseParryingVsRangedMultiplier, 1, 2, (v) => _settings.defenseParryingVsRangedMultiplier = v, isPercentage: false),
+              _buildSlider('Dex Evade vs Magic Eff.', _settings.defenseDexEvadeVsMagicMultiplier, 0, 1, (v) => _settings.defenseDexEvadeVsMagicMultiplier = v, isPercentage: true),
             ],
           ),
         ),
@@ -150,7 +176,6 @@ class _CombatTestPageState extends State<CombatTestPage> {
   }
 
   Widget _buildSimulationSetupCard() {
-    // Omesso per brevità (invariato)
     return Card(child: Padding(padding: const EdgeInsets.all(12.0),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Parametri Simulazione', style: Theme.of(context).textTheme.titleLarge),
@@ -164,7 +189,6 @@ class _CombatTestPageState extends State<CombatTestPage> {
   }
 
   Widget _buildCombatantSetup(String title, double minExp, double maxExp, CombatStyle currentStyle, Function(CombatStyle?) onStyleChanged, Function(RangeValues) onRangeChanged) {
-    // Omesso per brevità (invariato)
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(title, style: Theme.of(context).textTheme.titleMedium),
       RangeSlider(values: RangeValues(minExp, maxExp), min: 100, max: 20000, divisions: 199, labels: RangeLabels(minExp.round().toString(), maxExp.round().toString()), onChanged: onRangeChanged),
@@ -177,7 +201,6 @@ class _CombatTestPageState extends State<CombatTestPage> {
   }
 
   Widget _buildActionsCard() {
-    // Omesso per brevità (invariato)
     return Card(child: Padding(padding: const EdgeInsets.all(12.0),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
         ElevatedButton.icon(
@@ -192,7 +215,6 @@ class _CombatTestPageState extends State<CombatTestPage> {
   }
 
   Widget _buildResultsCard() {
-    // Omesso per brevità (invariato)
     return Card(child: Padding(padding: const EdgeInsets.all(12.0), child: Column(children: [
       Text('Risultati', style: Theme.of(context).textTheme.titleLarge),
       if (_isRunning) Padding(padding: const EdgeInsets.all(8.0), child: LinearProgressIndicator(value: _progress)),
@@ -205,14 +227,13 @@ class _CombatTestPageState extends State<CombatTestPage> {
   }
 
   Widget _buildDetailedLogs() {
-    // Omesso per brevità (invariato)
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Log Dettagliato Combattimenti', style: Theme.of(context).textTheme.titleMedium),
       const SizedBox(height: 8),
       if (_fightLogs.isNotEmpty)
         ExpansionPanelList(
           expansionCallback: (int index, bool isExpanded) {
-            setState(() => _isPanelExpanded[index] = isExpanded);
+            setState(() => _isPanelExpanded[index] = !isExpanded);
           },
           children: _fightLogs.asMap().entries.map<ExpansionPanel>((entry) {
             int idx = entry.key;
@@ -234,7 +255,6 @@ class _CombatTestPageState extends State<CombatTestPage> {
   }
 
   Widget _buildPanelBody(IndividualFightLog log) {
-    // Omesso per brevità (invariato)
     List<Skill> allSkills = Skill.values;
     final textStyle = const TextStyle(fontFamily: 'monospace', fontSize: 12);
 
@@ -276,7 +296,6 @@ class _CombatTestPageState extends State<CombatTestPage> {
   }
 
   Widget _buildSummaryResults() {
-    // Omesso per brevità (invariato)
     final wins1 = _results[CombatResultType.combatant1Wins] ?? 0;
     final wins2 = _results[CombatResultType.combatant2Wins] ?? 0;
     final draws = _results[CombatResultType.draw] ?? 0;
@@ -299,7 +318,6 @@ class _CombatTestPageState extends State<CombatTestPage> {
   }
 
   Widget _buildResultColumn(String title, int value, int total, Color color) {
-    // Omesso per brevità (invariato)
     double percentage = total > 0 ? value / total * 100 : 0;
     return Column(
       children: [
@@ -317,7 +335,7 @@ class _CombatTestPageState extends State<CombatTestPage> {
   Widget _buildSlider(String label, double value, double min, double max, Function(double) onChanged, {bool isLog = false, bool isPercentage = false}) {
     String displayString = isPercentage ? '${(value * 100).toStringAsFixed(0)}%' : (isLog ? value.round().toString() : value.toStringAsFixed(2));
     double sliderValue = isLog ? (log(value.clamp(min, max)) - log(min)) / (log(max) - log(min)) : value;
-    int? divisions = isLog ? null : (max-min)*100 ~/ 1; // More precision for non-log sliders
+    int? divisions = isLog ? null : (max-min)*100 ~/ 1;
 
     return SizedBox(width: 300, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('$label: $displayString'),

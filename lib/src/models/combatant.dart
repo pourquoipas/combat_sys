@@ -1,6 +1,6 @@
 import 'dart:math';
-import 'game_settings.dart';
-import 'skills.dart';
+import 'package:combat_sys/src/models/game_settings.dart';
+import 'package:combat_sys/src/models/skills.dart';
 
 /// Abstract base class for any entity participating in combat.
 abstract class Combatant {
@@ -17,6 +17,7 @@ abstract class Combatant {
   double get combatExp;
 
   /// The total Hit Points of the combatant.
+  /// **UPDATED**: HP is now decoupled from Strength and based on experience.
   double get maxHp;
 
   // Helper to get a skill's value, defaulting to 0 if not present.
@@ -46,34 +47,12 @@ class Player extends Combatant {
 
   @override
   double get maxHp {
-    return (SkillUtils.getRealSkillValue(getSkill(Skill.Strength)) * settings.hpPerStrengthPoint) + 50;
+    return settings.baseHp + (experience / settings.expToHpFactor);
   }
 
   /// Distributes skill points based on combatExp.
   void distributeSkillPoints() {
-    // Normalize combatExp from its limit (e.g., 1000) to the total skill points cap (e.g., 700)
-    double ratio = settings.playerSkillCapTotal / settings.playerCombatExpLimit;
-    int pointsToDistribute = (combatExp * ratio).floor();
-
-    // Reset skills before distribution
-    skills = {for (var skill in Skill.values) skill: 0};
-
-    // Simple random distribution for testing purposes. A real implementation
-    // would let the player choose.
-    var random = Random();
-    List<Skill> allSkills = Skill.values.toList();
-
-    for (int i = 0; i < pointsToDistribute; i++) {
-      Skill randomSkill = allSkills[random.nextInt(allSkills.length)];
-      if (skills[randomSkill]! < settings.skillCap) {
-        skills[randomSkill] = skills[randomSkill]! + 1;
-      } else {
-        // If skill is capped, try to find another one.
-        // This is a naive approach, could loop forever if all skills are capped.
-        // A better approach would be to pick from a list of non-capped skills.
-        i--; // Retry with another skill
-      }
-    }
+    // This logic is now in the CombatantFactory.
   }
 }
 
@@ -101,7 +80,6 @@ class Monster extends Combatant {
 
   @override
   double get maxHp {
-    return (SkillUtils.getRealSkillValue(getSkill(Skill.Strength)) * settings.hpPerStrengthPoint) + 50;
+    return settings.baseHp + (experience / settings.expToHpFactor);
   }
 }
-

@@ -233,7 +233,7 @@ class _CombatTestPageState extends State<CombatTestPage> {
       if (_fightLogs.isNotEmpty)
         ExpansionPanelList(
           expansionCallback: (int index, bool isExpanded) {
-            setState(() => _isPanelExpanded[index] = !isExpanded);
+            setState(() => _isPanelExpanded[index] = isExpanded);
           },
           children: _fightLogs.asMap().entries.map<ExpansionPanel>((entry) {
             int idx = entry.key;

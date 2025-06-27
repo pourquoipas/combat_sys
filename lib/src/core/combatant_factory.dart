@@ -28,31 +28,40 @@ class CombatantFactory {
     return monster;
   }
 
-  /// **REWRITTEN**: Generic, robust, and efficient skill distribution logic.
+  /// **UPDATED**: Generic, robust, and efficient skill distribution logic.
   void _distributeCombatantSkills(Combatant combatant, int pointsToDistribute, CombatStyle style, {required bool isPlayer}) {
     combatant.skills = {for (var skill in Skill.values) skill: 0};
 
-    // --- Step 1: Define the available skill pool for this combatant ---
     final List<Skill> availableSkills = Skill.values.where((s) => isPlayer || !utilitySkillsForPlayerOnly.contains(s)).toList();
 
-    // --- Step 2: Set 3-4 "high skills" to the cap ---
+    // --- Step 1: Define the primary skill pool based on the chosen style ---
     List<Skill> highSkillPool = [];
     if (style != CombatStyle.None) {
       switch(style) {
-        case CombatStyle.Melee: highSkillPool = [Skill.MeleeCombat, Skill.Parrying, Skill.Strength, Skill.Tactics]; break;
-        case CombatStyle.Ranged: highSkillPool = [Skill.RangedCombat, Skill.Dexterity, Skill.Anatomy, Skill.Tactics]; break;
-        case CombatStyle.Magic: highSkillPool = [Skill.MagicCombat, Skill.ResistingSpells, Skill.EvaluatingIntelligence, Skill.SpiritSpeak]; break;
-        case CombatStyle.None: // Use all primary combat skills if None is selected
-          highSkillPool = [Skill.MeleeCombat, Skill.RangedCombat, Skill.MagicCombat, Skill.Parrying, Skill.ResistingSpells];
+        case CombatStyle.Melee:
+        // Offensive: MeleeCombat, Str, Tactics, Anatomy. Defensive: Parrying
+          highSkillPool = [Skill.MeleeCombat, Skill.Strength, Skill.Tactics, Skill.Anatomy, Skill.Parrying];
+          break;
+        case CombatStyle.Ranged:
+        // Offensive: RangedCombat, Dex, Tactics, DetectingHidden. Defensive: Parrying
+          highSkillPool = [Skill.RangedCombat, Skill.Dexterity, Skill.Tactics, Skill.DetectingHidden, Skill.Parrying];
+          break;
+        case CombatStyle.Magic:
+        // Offensive: MagicCombat, EvalInt, Tactics, SpiritSpeak. Defensive: ResistingSpells
+          highSkillPool = [Skill.MagicCombat, Skill.EvaluatingIntelligence, Skill.Tactics, Skill.SpiritSpeak, Skill.ResistingSpells];
+          break;
+        case CombatStyle.None:
+        // Generalist pool
+          highSkillPool = [Skill.MeleeCombat, Skill.RangedCombat, Skill.MagicCombat, Skill.Parrying, Skill.ResistingSpells, Skill.Tactics];
           break;
       }
     } else {
-      // If no style, pick from all available skills
       highSkillPool = List<Skill>.from(availableSkills);
     }
 
+    // --- Step 2: Max out 3-4 "high skills" from the defined pool ---
     highSkillPool.shuffle(_random);
-    int highSkillsToSet = (style == CombatStyle.None) ? 2 : (3 + _random.nextInt(2)); // Set 2 if None, else 3 or 4
+    int highSkillsToSet = (style == CombatStyle.None) ? 2 : (3 + _random.nextInt(2));
 
     for (int i = 0; i < highSkillsToSet && highSkillPool.isNotEmpty; i++) {
       if (pointsToDistribute >= settings.skillCap) {
@@ -60,31 +69,20 @@ class CombatantFactory {
         combatant.skills[skillToMax] = settings.skillCap;
         pointsToDistribute -= settings.skillCap;
       } else {
-        break; // Not enough points to max out more skills
+        break;
       }
     }
 
     // --- Step 3: Distribute remaining points into a smaller, focused pool ---
-    // Create a pool of skills that are not yet capped.
     List<Skill> distributableSkills = availableSkills.where((s) => combatant.skills[s]! < settings.skillCap).toList();
     distributableSkills.shuffle(_random);
 
-    if (distributableSkills.isEmpty) return; // All skills are capped, nothing left to do.
+    if (distributableSkills.isEmpty) return;
 
-    // Focus points on a smaller group of 5-6 secondary skills
     int secondarySkillsCount = 5 + _random.nextInt(2);
     List<Skill> secondaryPool = distributableSkills.take(secondarySkillsCount).toList();
 
-    // Add any primary combat skills that weren't maxed out to this pool to prioritize them
-    final primaryCombatSkills = [Skill.MeleeCombat, Skill.RangedCombat, Skill.MagicCombat];
-    for (var pSkill in primaryCombatSkills) {
-      if (combatant.skills[pSkill]! < settings.skillCap && !secondaryPool.contains(pSkill)) {
-        secondaryPool.add(pSkill);
-      }
-    }
-
     // --- Step 4: Robust distribution loop ---
-    // This loop is guaranteed to terminate because either points run out or the pool becomes empty.
     while (pointsToDistribute > 0 && secondaryPool.isNotEmpty) {
       int skillIndex = _random.nextInt(secondaryPool.length);
       Skill skillToIncrement = secondaryPool[skillIndex];
@@ -92,7 +90,6 @@ class CombatantFactory {
       combatant.skills[skillToIncrement] = combatant.skills[skillToIncrement]! + 1;
       pointsToDistribute--;
 
-      // If a skill reaches the cap, remove it from the pool so it's not chosen again.
       if (combatant.skills[skillToIncrement]! >= settings.skillCap) {
         secondaryPool.removeAt(skillIndex);
       }

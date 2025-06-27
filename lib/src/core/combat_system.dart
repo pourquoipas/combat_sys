@@ -17,12 +17,28 @@ class CombatLog {
   void add(String entry) => entries.add(entry);
 }
 
+
+/// ## Combat System Core Logic (v8)
+///
+/// This class orchestrates a fight between two combatants. All balancing values
+/// ("magic numbers") have been moved to the `GameSettings` class for complete
+/// tunability of the combat formulas.
+///
+/// 1.  **Score-Based Hit Chance**: The probability of an attack succeeding is based on a
+///     comparison of the attacker's "Attack Score" vs the defender's "Defense Score" (evasion).
+/// 2.  **Specialized Damage Sources**: Each combat style (Melee, Ranged, Magic) now derives its
+///     damage bonus from a distinct trio of skills, making builds more unique.
+/// 3.  **Specialized Damage Reduction**: Damage reduction is calculated based on the
+///     incoming attack type, making defensive builds more strategic.
+/// 4.  **Direct Type Advantage**: The `typeAdvantageMultiplier` provides a clear and tunable
+///     bonus to reinforce the Rock-Paper-Scissors triangle (Magic > Melee > Ranged > Magic).
 class CombatSystem {
   final GameSettings settings;
   final Random _random = Random();
 
   CombatSystem({required this.settings});
 
+  /// Executes a full combat simulation between two combatants.
   CombatResult fight(Combatant c1, Combatant c2, {CombatLog? log, CombatStyle c1Style = CombatStyle.Melee, CombatStyle c2Style = CombatStyle.Melee}) {
     double hp1 = c1.maxHp, hp2 = c2.maxHp;
     final double initialHp1 = hp1, initialHp2 = hp2;
@@ -42,27 +58,16 @@ class CombatSystem {
         if (hp1 <= 0) return _createResult(CombatResultType.combatant2Wins, turn, initialHp1, initialHp2, 0, hp2, totalHealed1, totalHealed2);
       }
 
-      double healed1 = _performHeal(c1, log);
+      double healed1 = _performHeal(c1);
       if (healed1 > 0) { hp1 = min(initialHp1, hp1 + healed1); totalHealed1 += healed1; }
-      double healed2 = _performHeal(c2, log);
+      double healed2 = _performHeal(c2);
       if (healed2 > 0) { hp2 = min(initialHp2, hp2 + healed2); totalHealed2 += healed2; }
     }
 
     return _createResult(CombatResultType.draw, turn - 1, initialHp1, initialHp2, hp1, hp2, totalHealed1, totalHealed2);
   }
 
-  String _getAttackTypeFromStyle(CombatStyle style) => style.name.toLowerCase();
-
-  CombatResult _createResult(CombatResultType type, int turns, double iHp1, double iHp2, double fHp1, double fHp2, double hHp1, double hHp2) {
-    return CombatResult(type: type, turns: turns, c1InitialHp: iHp1, c2InitialHp: iHp2, c1FinalHp: fHp1, c2FinalHp: fHp2, c1HealedHp: hHp1, c2HealedHp: hHp2);
-  }
-
-  double _performHeal(Combatant c, CombatLog? log) {
-    double realHealing = SkillUtils.getRealSkillValue(c.getSkill(Skill.Healing));
-    if (_random.nextDouble() < (realHealing / 500.0)) { return (realHealing * 0.1) + _random.nextDouble() * 5; }
-    return 0;
-  }
-
+  /// Determines if an attack is successful.
   bool _performAttack(Combatant attacker, Combatant defender, String attackType, CombatStyle defenderStyle, CombatLog? log) {
     double attackScore = _getAttackScore(attacker, attackType);
     double defenseScore = _getDefenseScore(defender, attackType);
@@ -72,25 +77,40 @@ class CombatSystem {
     return _random.nextDouble() < hitChance;
   }
 
+  /// Calculates the final damage after a successful hit.
   double _calculateDamage(Combatant attacker, Combatant defender, String attackType, CombatStyle defenderStyle, CombatLog? log) {
-    double baseDmg = settings.baseDamage;
     double damageBonusFactor = 0;
 
+    switch (attackType) {
+      case 'melee':
+        damageBonusFactor = (SkillUtils.getRealSkillValue(attacker.getSkill(Skill.Strength)) +
+            SkillUtils.getRealSkillValue(attacker.getSkill(Skill.Tactics)) +
+            SkillUtils.getRealSkillValue(attacker.getSkill(Skill.Anatomy))) / settings.damageBonusNormalizer;
+        break;
+      case 'ranged':
+        damageBonusFactor = (SkillUtils.getRealSkillValue(attacker.getSkill(Skill.Dexterity)) +
+            SkillUtils.getRealSkillValue(attacker.getSkill(Skill.Tactics)) +
+            SkillUtils.getRealSkillValue(attacker.getSkill(Skill.DetectingHidden))) / settings.damageBonusNormalizer;
+        break;
+      case 'magic':
+        damageBonusFactor = (SkillUtils.getRealSkillValue(attacker.getSkill(Skill.EvaluatingIntelligence)) +
+            SkillUtils.getRealSkillValue(attacker.getSkill(Skill.Tactics)) +
+            SkillUtils.getRealSkillValue(attacker.getSkill(Skill.SpiritSpeak))) / settings.damageBonusNormalizer;
+        break;
+    }
+
+    double damageReductionFactor = 0;
     if (attackType == 'magic') {
-      damageBonusFactor = (SkillUtils.getRealSkillValue(attacker.getSkill(Skill.EvaluatingIntelligence)) / 100) + (SkillUtils.getRealSkillValue(attacker.getSkill(Skill.Tactics)) / 100 * settings.tacticsDamageBonusFactor);
+      damageReductionFactor = (SkillUtils.getRealSkillValue(defender.getSkill(Skill.ResistingSpells)) +
+          SkillUtils.getRealSkillValue(defender.getSkill(Skill.SpiritSpeak))) / settings.damageReductionNormalizer;
     } else {
-      damageBonusFactor = (SkillUtils.getRealSkillValue(attacker.getSkill(Skill.Strength)) / 100) + (SkillUtils.getRealSkillValue(attacker.getSkill(Skill.Tactics)) / 100 * settings.tacticsDamageBonusFactor) + (SkillUtils.getRealSkillValue(attacker.getSkill(Skill.Anatomy)) / 100 * settings.anatomyDamageBonusFactor);
+      damageReductionFactor = (SkillUtils.getRealSkillValue(defender.getSkill(Skill.Strength)) +
+          SkillUtils.getRealSkillValue(defender.getSkill(Skill.Anatomy))) / settings.damageReductionNormalizer;
     }
+    double damageReduction = 1.0 - damageReductionFactor.clamp(0.0, settings.damageReductionCap);
 
-    double realDefenderAnatomy = SkillUtils.getRealSkillValue(defender.getSkill(Skill.Anatomy));
-    double damageReduction = 1 - (realDefenderAnatomy / 100 * settings.anatomyDefenseBonusFactor);
-    if (attackType == 'magic') {
-      damageReduction = 1 - (realDefenderAnatomy / 100 * settings.anatomyDefenseBonusFactor * (1 - settings.magicArmorPenetrationFactor));
-    }
+    double finalDamage = settings.baseDamage * (1 + damageBonusFactor) * damageReduction;
 
-    double finalDamage = baseDmg * (1 + damageBonusFactor) * damageReduction;
-
-    // *** NEW: Type Advantage Logic ***
     bool hasAdvantage = (attackType == 'magic' && defenderStyle == CombatStyle.Melee) ||
         (attackType == 'melee' && defenderStyle == CombatStyle.Ranged) ||
         (attackType == 'ranged' && defenderStyle == CombatStyle.Magic);
@@ -102,6 +122,7 @@ class CombatSystem {
     return finalDamage < 1.0 ? 1.0 : finalDamage;
   }
 
+  /// Calculates the attacker's total score for a specific attack type.
   double _getAttackScore(Combatant c, String type) {
     Skill primarySkill;
     switch (type) {
@@ -110,25 +131,46 @@ class CombatSystem {
       default: primarySkill = Skill.MeleeCombat; break;
     }
     double score = SkillUtils.getRealSkillValue(c.getSkill(primarySkill));
-    score += SkillUtils.getRealSkillValue(c.getSkill(Skill.Tactics)) * 0.5;
-    score += SkillUtils.getRealSkillValue(c.getSkill(Skill.Anatomy)) * 0.3;
-    if (type != 'magic') { score += SkillUtils.getRealSkillValue(c.getSkill(Skill.Dexterity)) * 0.3; }
-    else { score += SkillUtils.getRealSkillValue(c.getSkill(Skill.EvaluatingIntelligence)) * 0.4; }
+    score += SkillUtils.getRealSkillValue(c.getSkill(Skill.Tactics)) * settings.scoreTacticsMultiplier;
+    score += SkillUtils.getRealSkillValue(c.getSkill(Skill.Anatomy)) * settings.scoreAnatomyMultiplier;
+    if (type != 'magic') {
+      score += SkillUtils.getRealSkillValue(c.getSkill(Skill.Dexterity)) * settings.scoreDexterityMultiplier;
+    } else {
+      score += SkillUtils.getRealSkillValue(c.getSkill(Skill.EvaluatingIntelligence)) * settings.scoreEvalIntMultiplier;
+    }
     return score;
   }
 
+  /// Calculates the defender's total score against a specific attack type.
   double _getDefenseScore(Combatant c, String attackType) {
     double score;
     if (attackType == 'magic') {
       score = SkillUtils.getRealSkillValue(c.getSkill(Skill.ResistingSpells));
-      score += SkillUtils.getRealSkillValue(c.getSkill(Skill.EvaluatingIntelligence)) * 0.4;
+      score += SkillUtils.getRealSkillValue(c.getSkill(Skill.SpiritSpeak)) * settings.defenseSpiritSpeakMultiplier;
     } else {
       score = SkillUtils.getRealSkillValue(c.getSkill(Skill.Parrying));
-      // Parrying is less effective vs Melee than vs Ranged, creating the advantage for Melee.
-      if (attackType == 'melee') { score *= 0.8; }
+      if (attackType == 'melee') {
+        score *= settings.defenseParryingVsMeleeMultiplier;
+      }
     }
-    score += SkillUtils.getRealSkillValue(c.getSkill(Skill.Dexterity)) * 0.4;
-    score += SkillUtils.getRealSkillValue(c.getSkill(Skill.Anatomy)) * 0.2;
+    score += SkillUtils.getRealSkillValue(c.getSkill(Skill.Dexterity)) * settings.defenseDexterityMultiplier;
     return score;
+  }
+
+  /// Simulates a chance for a combatant to heal a small amount of HP in a turn.
+  double _performHeal(Combatant c) {
+    double realHealing = SkillUtils.getRealSkillValue(c.getSkill(Skill.Healing));
+    if (_random.nextDouble() < (realHealing / settings.healChanceDivisor)) {
+      return (realHealing * settings.healBaseMultiplier) + _random.nextDouble() * settings.healRandomBonus;
+    }
+    return 0;
+  }
+
+  /// Converts a CombatStyle enum to a string representing the attack type.
+  String _getAttackTypeFromStyle(CombatStyle style) => style.name.toLowerCase();
+
+  /// Creates a CombatResult object with all the final data from a fight.
+  CombatResult _createResult(CombatResultType type, int turns, double iHp1, double iHp2, double fHp1, double fHp2, double hHp1, double hHp2) {
+    return CombatResult(type: type, turns: turns, c1InitialHp: iHp1, c2InitialHp: iHp2, c1FinalHp: fHp1, c2FinalHp: fHp2, c1HealedHp: hHp1, c2HealedHp: hHp2);
   }
 }
